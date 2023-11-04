@@ -1,51 +1,63 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-
 library(shiny)
+library(reticulate)
 
-# Define UI for application that draws a histogram
+# UI definition
 ui <- fluidPage(
-
-    # Application title
-    titlePanel("Old Faithful Geyser Data"),
-
-    # Sidebar with a slider input for number of bins 
-    sidebarLayout(
-        sidebarPanel(
-            sliderInput("bins",
-                        "Number of bins:",
-                        min = 1,
-                        max = 50,
-                        value = 30)
-        ),
-
-        # Show a plot of the generated distribution
-        mainPanel(
-           plotOutput("distPlot")
-        )
+  titlePanel("Loqui for Voice Cloning"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      fileInput("audioFile", "Choose a WAV file",
+                accept = c("audio/wav")
+      ),
+      textAreaInput("textInput", "Enter Text:", value = "", rows = 4),
+      actionButton("generateButton", "Generate")
+    ),
+    
+    mainPanel(
+      downloadButton("downloadOutput", "Download Output Audio")
     )
+  )
 )
 
-# Define server logic required to draw a histogram
+# Server logic
 server <- function(input, output) {
-
-    output$distPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
-        x    <- faithful[, 2]
-        bins <- seq(min(x), max(x), length.out = input$bins + 1)
-
-        # draw the histogram with the specified number of bins
-        hist(x, breaks = bins, col = 'darkgray', border = 'white',
-             xlab = 'Waiting time to next eruption (in mins)',
-             main = 'Histogram of waiting times')
-    })
+  
+  observeEvent(input$generateButton, {
+    if (!is.null(input$audioFile) && input$textInput != "") {
+      
+      inFile <- input$audioFile$datapath
+      
+      # Reticulate Python code
+      
+      # When deploying...
+      # python_path <- Sys.getenv("PATH_TO_PYTHON", "/opt/homebrew/...")
+      # reticulate::use_python(python_path)
+      
+      reticulate::use_python("/opt/homebrew/Caskroom/miniforge/base/bin/python")
+      
+      TTS_api <- reticulate::import("TTS.api")
+      tts <- TTS_api$TTS("tts_models/multilingual/multi-dataset/xtts_v1.1", gpu = FALSE)
+      
+      tts$tts_to_file(text = input$textInput, 
+                      max_new_tokens = 600,
+                      file_path = "output.wav", 
+                      speaker_wav = inFile, 
+                      language = "en")
+    }
+  })
+  
+  output$downloadOutput <- downloadHandler(
+    filename = function() {
+      "output.wav"
+    },
+    content = function(file) {
+      file.copy("output.wav", file)
+    },
+    contentType = "audio/wav"
+  )
+  
 }
 
-# Run the application 
+# Create Shiny app
 shinyApp(ui = ui, server = server)

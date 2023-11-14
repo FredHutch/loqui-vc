@@ -3,18 +3,20 @@ library(reticulate)
 
 # UI definition
 ui <- fluidPage(
-  titlePanel("Loqui for Voice Cloning"),
+  titlePanel("Loqui for Voice Cloning (Prototype)"),
   
   sidebarLayout(
     sidebarPanel(
-      fileInput("audioFile", "Choose a WAV file",
+      fileInput("audio_file", "Choose a WAV file",
                 accept = c("audio/wav")
       ),
-      textAreaInput("textInput", "Enter Text:", value = "", rows = 4),
-      actionButton("generateButton", "Generate")
+      textAreaInput("text_input", "Enter Text:", value = "", rows = 4),
+      actionButton("generate", "Generate")
     ),
     
     mainPanel(
+      uiOutput("audio_ui"),
+      br(),
       downloadButton("downloadOutput", "Download Output Audio")
     )
   )
@@ -23,10 +25,10 @@ ui <- fluidPage(
 # Server logic
 server <- function(input, output) {
   
-  observeEvent(input$generateButton, {
-    if (!is.null(input$audioFile) && input$textInput != "") {
+  observeEvent(input$generate, {
+    if (!is.null(input$audio_file) && input$text_input != "") {
       
-      inFile <- input$audioFile$datapath
+      inFile <- input$audio_file$datapath
       
       # Reticulate Python code
       
@@ -39,24 +41,32 @@ server <- function(input, output) {
       TTS_api <- reticulate::import("TTS.api")
       tts <- TTS_api$TTS("tts_models/multilingual/multi-dataset/xtts_v1.1", gpu = FALSE)
       
-      tts$tts_to_file(text = input$textInput, 
+      tts$tts_to_file(text = input$text_input, 
                       max_new_tokens = 600,
-                      file_path = "output.wav", 
+                      file_path = "www/output.wav", 
                       speaker_wav = inFile, 
                       language = "en")
     }
+    
+    # Show audio when Generate is clicked
+    output$audio_ui <- renderUI({
+      tags$audio(src = "output.wav", 
+                 type = "audio/wav",
+                 autoplay = NA, 
+                 controls = NA)
+    })
   })
   
+  # Show download button when Generate is clicked
   output$downloadOutput <- downloadHandler(
     filename = function() {
       "output.wav"
     },
     content = function(file) {
-      file.copy("output.wav", file)
+      file.copy("www/output.wav", file)
     },
     contentType = "audio/wav"
   )
-  
 }
 
 # Create Shiny app

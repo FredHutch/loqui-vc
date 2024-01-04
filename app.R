@@ -1,23 +1,35 @@
 library(shiny)
 library(reticulate)
+# Increase maximum file upload size to 10 MB
+options(shiny.maxRequestSize = 10 * 1024^2)
 
 # UI definition
 ui <- fluidPage(
+  # Hutch theme CSS
+  tags$head(
+    tags$link(rel = "stylesheet", type = "text/css", 
+              href = "i/hutch_theme.css")
+  ),
+  # Favicon
+  tags$head(tags$link(rel="shortcut icon", href="i/img/favicon.ico")),
+  
   titlePanel("Loqui for Voice Cloning (Prototype)"),
   
   sidebarLayout(
     sidebarPanel(
-      fileInput("audio_file", "Choose a WAV file",
+      fileInput("audio_file", "Choose a Waveform (WAV) Audio File",
                 accept = c("audio/wav")
       ),
-      textAreaInput("text_input", "Enter Text:", value = "", rows = 4),
+      textInput("gs_url", 
+                label = "Google Slides URL (Enable Link Sharing)",
+                placeholder = "Paste a Google Slides URL"),
       actionButton("generate", "Generate")
     ),
     
     mainPanel(
-      uiOutput("audio_ui"),
+      uiOutput("video_ui"),
       br(),
-      downloadButton("downloadOutput", "Download Output Audio")
+      downloadButton("download_video", "Download Video")
     )
   )
 )
@@ -26,47 +38,66 @@ ui <- fluidPage(
 server <- function(input, output) {
   
   observeEvent(input$generate, {
-    if (!is.null(input$audio_file) && input$text_input != "") {
+    if (!is.null(input$audio_file) && input$gs_url != "") {
+      # WAV Audio file of speaker
+      audio_file_path <- input$audio_file$datapath
+      # URL to Google Slides
+      gs_url <- input$gs_url
+      # Python version
+      python_path <- "/opt/homebrew/Caskroom/miniforge/base/bin/python"
       
-      inFile <- input$audio_file$datapath
+      # download google slides as pptx
+      pptx_path <- gsplyr::download(gs_url, type = "pptx")
+      # extract notes from pttx
+      pptx_notes_vector <- ptplyr::extract_notes(pptx_path)
       
-      # Reticulate Python code
+      # download google slides as pdf
+      pdf_path <- gsplyr::download(gs_url, type = "pdf")
+      # convert pdf to png
+      image_path <- ptplyr::convert_pdf_png(pdf_path)
       
-      # When deploying...
-      # python_path <- Sys.getenv("PATH_TO_PYTHON", "/opt/homebrew/...")
-      # reticulate::use_python(python_path)
-      
-      reticulate::use_python("/opt/homebrew/Caskroom/miniforge/base/bin/python")
-      
-      TTS_api <- reticulate::import("TTS.api")
-      tts <- TTS_api$TTS("tts_models/multilingual/multi-dataset/xtts_v1.1", gpu = FALSE)
-      
-      tts$tts_to_file(text = input$text_input, 
-                      max_new_tokens = 600,
-                      file_path = "www/output.wav", 
-                      speaker_wav = inFile, 
-                      language = "en")
+      # Run ari_spin_vc()
+      ari::ari_spin_vc(image_path, pptx_notes_vector, output = "output.mp4", 
+                       tts_engine_args = list(speaker_wav = audio_file_path,
+                                              python_version = python_path))
     }
-    
-    # Show audio when Generate is clicked
-    output$audio_ui <- renderUI({
-      tags$audio(src = "output.wav", 
-                 type = "audio/wav",
-                 autoplay = NA, 
-                 controls = NA)
+
+    # Show video when "Generate" is clicked
+    output$video_ui <- renderUI({
+      tags$video(src = "output.mp4", 
+                 type = "video/mp4",
+                 height ="480px", 
+                 width="854px",
+                 autoplay = TRUE,
+                 controls = TRUE)
     })
+    
+    # Show download button when Generate is clicked
+    output$download_video <- downloadHandler(
+      filename = function() {
+        "output.mp4"
+      },
+      content = function(file) {
+        file.copy("output.mp4", file)
+      },
+      contentType = "video/mp4"
+    )
+    
+    
+    
+    
+    
   })
+}
+
+# Code for Deployment to Hutch servers
+addResourcePath("/i", file.path(getwd(), "www"))
+options <- list()
+if (!interactive()) {
+  options$port = 3838
+  options$launch.browser = FALSE
+  options$host = "0.0.0.0"
   
-  # Show download button when Generate is clicked
-  output$downloadOutput <- downloadHandler(
-    filename = function() {
-      "output.wav"
-    },
-    content = function(file) {
-      file.copy("www/output.wav", file)
-    },
-    contentType = "audio/wav"
-  )
 }
 
 # Create Shiny app

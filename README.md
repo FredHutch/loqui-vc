@@ -3,4 +3,6 @@
 
 # Loqui for Voice Cloning
 
+Shiny app for creating automated videos by cloning your voice.
+
 WIP

@@ -57,14 +57,14 @@ server <- function(input, output) {
       image_path <- ptplyr::convert_pdf_png(pdf_path)
       
       # Run ari_spin_vc()
-      ari::ari_spin_vc(image_path, pptx_notes_vector, output = "output.mp4", 
+      ari::ari_spin_vc(image_path, pptx_notes_vector, output = "www/output.mp4", 
                        tts_engine_args = list(speaker_wav = audio_file_path,
                                               python_version = python_path))
     }
 
     # Show video when "Generate" is clicked
     output$video_ui <- renderUI({
-      tags$video(src = "output.mp4", 
+      tags$video(src = "i/output.mp4", 
                  type = "video/mp4",
                  height ="480px", 
                  width="854px",
@@ -78,15 +78,10 @@ server <- function(input, output) {
         "output.mp4"
       },
       content = function(file) {
-        file.copy("output.mp4", file)
+        file.copy("www/output.mp4", file)
       },
       contentType = "video/mp4"
     )
-    
-    
-    
-    
-    
   })
 }
 

@@ -36,6 +36,14 @@ ui <- fluidPage(
 
 # Server logic
 server <- function(input, output) {
+  # create unique video name
+  video_name <- eventReactive(input$generate, {
+    current_time <- Sys.time()
+    current_time <- format(current_time, "%Y-%m-%d-%H-%M-%S")
+    unique_file_name <- paste0("www/video-", current_time, ".mp4")
+    
+    unique_file_name
+  })
   
   observeEvent(input$generate, {
     if (!is.null(input$audio_file) && input$gs_url != "") {
@@ -57,14 +65,17 @@ server <- function(input, output) {
       image_path <- ptplyr::convert_pdf_png(pdf_path)
       
       # Run ari_spin_vc()
-      ari::ari_spin_vc(image_path, pptx_notes_vector, output = "www/output.mp4", 
+      ari::ari_spin_vc(image_path, pptx_notes_vector, output = video_name(), 
                        tts_engine_args = list(speaker_wav = audio_file_path,
                                               python_version = python_path))
     }
 
     # Show video when "Generate" is clicked
     output$video_ui <- renderUI({
-      tags$video(src = "i/output.mp4", 
+      
+      video_name_processed <- gsub("www/", "i/", video_name())
+      
+      tags$video(src = video_name_processed, 
                  type = "video/mp4",
                  height ="480px", 
                  width="854px",
@@ -75,10 +86,10 @@ server <- function(input, output) {
     # Show download button when Generate is clicked
     output$download_video <- downloadHandler(
       filename = function() {
-        "output.mp4"
+        gsub("www/", "", video_name())
       },
       content = function(file) {
-        file.copy("www/output.mp4", file)
+        file.copy(video_name(), file)
       },
       contentType = "video/mp4"
     )

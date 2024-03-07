@@ -13,8 +13,24 @@ ui <- fluidPage(
   # Favicon
   tags$head(tags$link(rel="shortcut icon", href="i/img/favicon.ico")),
   
-  titlePanel("Loqui for Voice Cloning (Prototype)"),
-  
+  titlePanel(tagList(
+    "Loqui for Voice Cloning",
+    span(
+      actionButton("help", 
+                   label = "Help",
+                   icon = icon("circle-exclamation"),
+                   width = "77px",
+                   onclick ="window.open(`https://github.com/FredHutch/loqui-vc/issues/new`, '_blank')"),
+      actionButton("github",
+                   label = "Code",
+                   icon = icon("github"),
+                   width = "77px",
+                   onclick ="window.open(`https://github.com/FredHutch/loqui-vc`, '_blank')"),
+      style = "position:absolute;right:2em;"
+    )
+  ),
+  windowTitle = "Voice Cloning"),
+  hr(),
   sidebarLayout(
     sidebarPanel(
       fileInput("audio_file", "Choose a Waveform (WAV) Audio File",
@@ -23,9 +39,16 @@ ui <- fluidPage(
       textInput("gs_url", 
                 label = "Google Slides URL (Enable Link Sharing)",
                 placeholder = "Paste a Google Slides URL"),
-      actionButton("generate", "Generate")
+      actionButton("generate", "Generate"),
+      br(),
+      br(),
+            h5("Built with",
+         img(src = "https://www.rstudio.com/wp-content/uploads/2014/04/shiny.png", height = "30px"),
+         "by",
+         img(src = "i/img/posit.jpeg", height = "30px")
+      ),
+      tags$img(src = "i/img/logo.png", width = "90%")
     ),
-    
     mainPanel(
       uiOutput("video_ui"),
       br(),
